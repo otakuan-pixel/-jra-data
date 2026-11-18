@@ -1,0 +1,7 @@
+{}                                                           races 3019  mu_only 2.0110 (β 2.17)  mkt_mu 1.8862  市場比 +0.0011  hit 0.305
+{"w_resid": 0.7}                                             races 3019  mu_only 2.0160 (β 2.07)  mkt_mu 1.8854  市場比 +0.0019  hit 0.305
+{"w_resid": 1.0}                                             races 3019  mu_only 2.0345 (β 1.94)  mkt_mu 1.8849  市場比 +0.0024  hit 0.306
+{"w_resid": 0.5, "prior_n": 0.15, "k_level": 2.0, "k_pace":  races 3019  mu_only 2.0101 (β 2.18)  mkt_mu 1.8853  市場比 +0.0020  hit 0.311
+{"w_resid": 0.7, "prior_n": 0.15, "k_level": 2.0, "k_pace":  races 3019  mu_only 2.0202 (β 2.09)  mkt_mu 1.8848  市場比 +0.0025  hit 0.309
+{"w_resid": 0.7, "prior_n": 0.15, "k_level": 2.0, "k_pace":  races 3019  mu_only 2.0193 (β 2.07)  mkt_mu 1.8849  市場比 +0.0023  hit 0.307
+{"w_resid": 0.7, "prior_n": 0.05}                            races 3019  mu_only 2.0165 (β 1.86)  mkt_mu 1.8854  市場比 +0.0019  hit 0.305

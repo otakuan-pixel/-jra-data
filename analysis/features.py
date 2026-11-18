@@ -262,7 +262,7 @@ def _work(group):
             out = {"date": k[0], "jo": k[1], "rno": k[2], "surf": r0["surf"], "dist": r0["dist"], "cls": cls, "cond": cond, "m": m,
                    "num": h["num"], "horse": h["name"], "place": h["place"], "odds": h["odds"],
                    "p_sim": (oh["win"] * n + 0.5) / (n + 0.5 * m), "p3_sim": oh["top3"], "p_mk": mkp.get(h["num"]),
-                   "mu": rt["mu"], "mu0": rt["mu0"], "apt": rt["apt"], "e": rt["e"], "e_n": rt["e_n"], "n_runs": rt["n"],
+                   "mu": rt["mu"], "mu0": rt["mu0"], "mu_t": rt.get("mu_t"), "k_brd_vm": rt["mkf"].get("brd_vm"), "apt": rt["apt"], "e": rt["e"], "e_n": rt["e_n"], "n_runs": rt["n"],
                    "sw": rt["sw"], "lay": rt["lay"], "f_sd": rt["f_sd"], "f_last": rt["f_last"], "f_top": rt["top"], "f_avg": rt["avg"],
                    "prior": rt["prior"], "fidx": fidx, "age": h["age"], "sex": h["sex"], "wt": h["wt"],
                    "b_now": int(b_now), "b_first": int(b_now and not any(past_b)), "b_off": int((not b_now) and bool(past_b) and past_b[0]),

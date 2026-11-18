@@ -1,0 +1,34 @@
+{}                                                           races 1510  mu_only 2.0054 (β 2.17)  mkt_mu 1.8791  市場比 +0.0009  hit 0.313
+{"recency_days": 90}                                         races 1510  mu_only 2.0111 (β 2.18)  mkt_mu 1.8792  市場比 +0.0008  hit 0.309
+{"recency_days": 120}                                        races 1510  mu_only 2.0077 (β 2.17)  mkt_mu 1.8792  市場比 +0.0008  hit 0.308
+{"recency_days": 300}                                        races 1510  mu_only 2.0055 (β 2.17)  mkt_mu 1.8791  市場比 +0.0009  hit 0.315
+{"decay_i": 0.85}                                            races 1510  mu_only 2.0049 (β 2.16)  mkt_mu 1.8792  市場比 +0.0009  hit 0.313
+{"decay_i": 0.97}                                            races 1510  mu_only 2.0067 (β 2.18)  mkt_mu 1.8791  市場比 +0.0009  hit 0.313
+{"n_use": 6}                                                 races 1510  mu_only 2.0071 (β 2.15)  mkt_mu 1.8792  市場比 +0.0008  hit 0.313
+{"n_use": 20}                                                races 1510  mu_only 2.0055 (β 2.17)  mkt_mu 1.8791  市場比 +0.0009  hit 0.313
+{"top_blend": 0.0}                                           races 1510  mu_only 2.0051 (β 2.16)  mkt_mu 1.8791  市場比 +0.0009  hit 0.315
+{"top_blend": 0.4}                                           races 1510  mu_only 2.0087 (β 2.17)  mkt_mu 1.8791  市場比 +0.0009  hit 0.308
+{"w_resid": 0.0}                                             races 1510  mu_only 2.0248 (β 2.16)  mkt_mu 1.8791  市場比 +0.0009  hit 0.310
+{"w_resid": 0.5}                                             races 1510  mu_only 2.0026 (β 2.13)  mkt_mu 1.8788  市場比 +0.0012  hit 0.310
+{"k_pop": 0.4}                                               races 1510  mu_only 2.0047 (β 2.36)  mkt_mu 1.8790  市場比 +0.0010  hit 0.312
+{"k_pop": 1.0}                                               races 1510  mu_only 2.0102 (β 1.99)  mkt_mu 1.8792  市場比 +0.0008  hit 0.311
+{"mg_cap": 1.5}                                              races 1510  mu_only 2.0057 (β 2.25)  mkt_mu 1.8791  市場比 +0.0009  hit 0.307
+{"mg_cap": 3.0}                                              races 1510  mu_only 2.0097 (β 2.11)  mkt_mu 1.8791  市場比 +0.0009  hit 0.313
+{"mg_soft": 0.8, "mg_soft_k": 0.5}                           races 1510  mu_only 2.0068 (β 2.31)  mkt_mu 1.8791  市場比 +0.0009  hit 0.309
+{"mg_soft": 0.5, "mg_soft_k": 0.6, "mg_cap": 3.0}            races 1510  mu_only 2.0116 (β 2.32)  mkt_mu 1.8791  市場比 +0.0009  hit 0.307
+{"win_k": 0.0}                                               races 1510  mu_only 2.0063 (β 2.19)  mkt_mu 1.8791  市場比 +0.0009  hit 0.311
+{"win_k": 1.0}                                               races 1510  mu_only 2.0059 (β 2.14)  mkt_mu 1.8791  市場比 +0.0009  hit 0.311
+{"dist_scale": 600}                                          races 1510  mu_only 2.0050 (β 2.19)  mkt_mu 1.8791  市場比 +0.0009  hit 0.313
+{"dist_scale": 1500}                                         races 1510  mu_only 2.0065 (β 2.16)  mkt_mu 1.8792  市場比 +0.0009  hit 0.313
+{"other_w": 0.1}                                             races 1510  mu_only 2.0081 (β 2.18)  mkt_mu 1.8791  市場比 +0.0009  hit 0.312
+{"other_w": 0.4}                                             races 1510  mu_only 2.0052 (β 2.16)  mkt_mu 1.8791  市場比 +0.0009  hit 0.313
+{"k_level": 2.0}                                             races 1510  mu_only 2.0047 (β 2.16)  mkt_mu 1.8790  市場比 +0.0010  hit 0.310
+{"k_level": 8.0}                                             races 1510  mu_only 2.0093 (β 2.18)  mkt_mu 1.8792  市場比 +0.0008  hit 0.309
+{"prior_n": 0.15}                                            races 1510  mu_only 2.0038 (β 2.06)  mkt_mu 1.8791  市場比 +0.0009  hit 0.313
+{"prior_n": 0.6}                                             races 1510  mu_only 2.0112 (β 2.34)  mkt_mu 1.8791  市場比 +0.0009  hit 0.308
+{"k_pace": 0.0}                                              races 1510  mu_only 2.0063 (β 2.17)  mkt_mu 1.8791  市場比 +0.0009  hit 0.312
+{"k_pace": 0.7}                                              races 1510  mu_only 2.0046 (β 2.17)  mkt_mu 1.8791  市場比 +0.0009  hit 0.313
+{"k_style_run": 0.0}                                         races 1510  mu_only 2.0049 (β 2.17)  mkt_mu 1.8791  市場比 +0.0009  hit 0.314
+{"k_style_run": 0.08}                                        races 1510  mu_only 2.0073 (β 2.17)  mkt_mu 1.8791  市場比 +0.0009  hit 0.311
+{"k_wt": 0.0}                                                races 1510  mu_only 2.0059 (β 2.18)  mkt_mu 1.8790  市場比 +0.0010  hit 0.310
+{"k_wt": 0.1}                                                races 1510  mu_only 2.0141 (β 2.13)  mkt_mu 1.8792  市場比 +0.0008  hit 0.313
