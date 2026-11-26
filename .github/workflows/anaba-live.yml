@@ -1,0 +1,80 @@
+name: 大穴レポート（発走30分前）
+
+on:
+  schedule:
+    - cron: "*/10 0-7 * * 0,1,6"   # 土・日・月の 9:00〜16:50 JST に10分おき（発走25〜35分前のレースを報告）
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "対象日 YYYYMMDD（空欄なら今日）"
+        default: ""
+      race:
+        description: "今すぐ報告するレース（例 05_11。空欄なら発走30分前のレース）"
+        default: ""
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: anaba-git
+  cancel-in-progress: false
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      TZ: Asia/Tokyo
+      JRA2_REPO: ${{ github.workspace }}/jra2
+      ANABA_CACHE: ${{ runner.temp }}/anaba-cache
+      GH_TOKEN: ${{ github.token }}
+      ANABA_WEBHOOK_URL: ${{ secrets.ANABA_WEBHOOK_URL }}
+      ANABA_NOTIFY: ${{ vars.ANABA_NOTIFY || 'marked' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 報告するレースがあるか（軽い判定）
+        id: due
+        run: |
+          if [ -n "${{ inputs.race }}" ]; then
+            echo "due=true" >> "$GITHUB_OUTPUT"
+          else
+            python3 -m anaba.due ${{ inputs.date && format('--date {0}', inputs.date) || '' }}
+          fi
+
+      - name: 成績データ（otakuan-pixel/jra2 の data/results だけ）
+        if: steps.due.outputs.due == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: otakuan-pixel/jra2
+          path: jra2
+          sparse-checkout: data/results
+
+      - uses: actions/setup-python@v5
+        if: steps.due.outputs.due == 'true'
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: 依存パッケージ
+        if: steps.due.outputs.due == 'true'
+        run: pip install --quiet -r requirements.txt
+
+      - name: レポート作成
+        if: steps.due.outputs.due == 'true'
+        run: |
+          ARGS=""
+          [ -n "${{ inputs.date }}" ] && ARGS="$ARGS --date ${{ inputs.date }}"
+          [ -n "${{ inputs.race }}" ] && ARGS="$ARGS --race ${{ inputs.race }}"
+          python -m anaba live $ARGS
+
+      - name: コミット
+        if: always() && steps.due.outputs.due == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports data/pedigree data/horses.csv 2>/dev/null || true
+          if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
+          git commit -q -m "大穴レポート $(date +%Y-%m-%dT%H:%M)"
+          for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 5; done
