@@ -149,13 +149,15 @@ def _pay(pays, kind, combo):
     return tot
 
 
-def bet_types(sel, df_all, nk, race_id_map):
-    """sel：軸の馬（1頭1行）。相手は同じレースの人気上位。→ 券種ごとの 点数・的中・回収率"""
-    out = {k: [0, 0, 0.0] for k in ("単勝", "複勝", "ワイド 1番人気へ", "ワイド 1・2番人気へ（2点）",
-                                     "ワイド 1〜3番人気へ（3点）", "馬連 1〜3番人気へ（3点）",
-                                     "3連複 軸＋1〜3番人気から2頭（3点）", "3連複 軸＋1〜5番人気から2頭（10点）")}
-    races_used = 0
+BET_KINDS = ("単勝", "複勝", "ワイド 1番人気へ", "ワイド 1・2番人気へ（2点）", "ワイド 1〜3番人気へ（3点）",
+             "馬連 1〜3番人気へ（3点）", "3連複 軸＋1〜3番人気から2頭（3点）", "3連複 軸＋1〜5番人気から2頭（10点）")
+
+
+def bet_returns(sel, df_all, nk, race_id_map):
+    """sel：軸の馬（1頭1行）。相手は同じレースの人気上位 → 1軸1行で、券種ごとの（点数, 払戻）"""
+    import itertools
     by_race = df_all.groupby("race_id")
+    rows = []
     for _, r in sel.iterrows():
         rid = race_id_map.get(r["race_id"])
         info = nk.get(rid) if rid else None
@@ -165,25 +167,40 @@ def bet_types(sel, df_all, nk, race_id_map):
         g = by_race.get_group(r["race_id"]).sort_values("pop")
         favs = [int(x) for x in g["num"].values if int(x) != int(r["num"])][:5]
         a = int(r["num"])
-        races_used += 1
-
-        def add(k, tickets, kind):
-            out[k][0] += len(tickets)
-            ret = sum(_pay(pays, kind, t) for t in tickets)
-            out[k][1] += int(ret > 0)
-            out[k][2] += ret
-        add("単勝", [(a,)], "単勝")
-        add("複勝", [(a,)], "複勝")
-        add("ワイド 1番人気へ", [(a, favs[0])], "ワイド")
-        add("ワイド 1・2番人気へ（2点）", [(a, f) for f in favs[:2]], "ワイド")
-        add("ワイド 1〜3番人気へ（3点）", [(a, f) for f in favs[:3]], "ワイド")
-        add("馬連 1〜3番人気へ（3点）", [(a, f) for f in favs[:3]], "馬連")
-        import itertools
-        add("3連複 軸＋1〜3番人気から2頭（3点）", [(a,) + c for c in itertools.combinations(favs[:3], 2)], "三連複")
-        add("3連複 軸＋1〜5番人気から2頭（10点）", [(a,) + c for c in itertools.combinations(favs[:5], 2)], "三連複")
-    rows = [{"券種": k, "軸の頭数": races_used, "点数": v[0], "的中": v[1],
-             "回収率": v[2] / (100 * v[0]) if v[0] else np.nan} for k, v in out.items()]
+        tickets = {
+            "単勝": ([(a,)], "単勝"), "複勝": ([(a,)], "複勝"),
+            "ワイド 1番人気へ": ([(a, favs[0])], "ワイド"),
+            "ワイド 1・2番人気へ（2点）": ([(a, f) for f in favs[:2]], "ワイド"),
+            "ワイド 1〜3番人気へ（3点）": ([(a, f) for f in favs[:3]], "ワイド"),
+            "馬連 1〜3番人気へ（3点）": ([(a, f) for f in favs[:3]], "馬連"),
+            "3連複 軸＋1〜3番人気から2頭（3点）": ([(a,) + c for c in itertools.combinations(favs[:3], 2)], "三連複"),
+            "3連複 軸＋1〜5番人気から2頭（10点）": ([(a,) + c for c in itertools.combinations(favs[:5], 2)], "三連複"),
+        }
+        row = {"race_id": r["race_id"], "year": r["year"]}
+        for k, (ts, kind) in tickets.items():
+            row[k + "|n"] = len(ts)
+            row[k + "|ret"] = sum(_pay(pays, kind, t) for t in ts)
+        rows.append(row)
     return pd.DataFrame(rows)
+
+
+def bet_types(sel, df_all, nk, race_id_map, n_boot=1000, seed=0):
+    br = bet_returns(sel, df_all, nk, race_id_map)
+    if br.empty:
+        return pd.DataFrame()
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, len(br), size=(n_boot, len(br)))
+    out = []
+    for k in BET_KINDS:
+        n, ret = br[k + "|n"].values, br[k + "|ret"].values
+        roi = ret.sum() / (100 * n.sum())
+        boots = ret[idx].sum(axis=1) / (100 * n[idx].sum(axis=1))
+        row = {"券種": k, "軸の頭数": len(br), "点数": int(n.sum()), "的中": int((ret > 0).sum()), "回収率": roi,
+               "95%区間": "%.0f〜%.0f%%" % (100 * np.percentile(boots, 2.5), 100 * np.percentile(boots, 97.5))}
+        for y, g in br.groupby("year"):
+            row[str(y)] = g[k + "|ret"].sum() / (100 * g[k + "|n"].sum())
+        out.append(row)
+    return pd.DataFrame(out)
 
 
 # ───────────────────────── 4. 賭け金 ─────────────────────────

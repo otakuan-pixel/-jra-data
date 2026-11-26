@@ -8,6 +8,9 @@ on:
       backfill:
         description: "過去レースの血統を集めるリクエスト数の上限（0で集めない）"
         default: "2500"
+      bench:
+        description: "総当たり検証も今回行う（yes/no。ふだんは毎月第1週だけ）"
+        default: "no"
 
 permissions:
   contents: write
@@ -19,7 +22,7 @@ concurrency:
 jobs:
   weekly:
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 240
     env:
       TZ: Asia/Tokyo
       JRA2_REPO: ${{ github.workspace }}/jra2
@@ -48,11 +51,22 @@ jobs:
           [ -z "$N" ] && N=2500
           [ "$N" != "0" ] && timeout 4500 python -m anaba backfill --since 20210101 --max-requests "$N" || true
 
+      - name: 全レースの払戻（全券種）を足す（券種の比較用。新しい週の分だけ）
+        run: timeout 1800 python -m anaba payouts --since 20250101 --max-requests 1200 || true
+
       - name: 血統の検証（奇跡の血量など）
         run: python -m anaba pedstudy
 
       - name: 再学習（複勝払戻・条件表・ウォークフォワード検証・本番モデル）
         run: python -m anaba train
+
+      - name: 予測方法・運用ルールの総当たり検証（毎月第1週だけ。約30分）
+        run: |
+          if [ "$(date +%d)" -le 07 ] || [ "${{ inputs.bench }}" = "yes" ]; then
+            python -m anaba bench --rebuild
+          else
+            echo "今週は省略（毎月第1週に実行）"
+          fi
 
       - name: コミット
         if: always()

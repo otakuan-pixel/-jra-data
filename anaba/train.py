@@ -135,10 +135,9 @@ def write_research_md(res, sels=None, val=None, path=None):
             L += ["### %s（対数損失：市場 %.5f → モデル %.5f）" % (tier, v["logloss"]["market"], v["logloss"]["model"]), "",
                   _md_table(_ints(sels[tier].reset_index().rename(columns={"index": "選び方"}), ["頭数", "3着内"]), SEL_FMT), "",
                   "年ごと（複勝／単勝・頭数）", "", _year_md(v), ""]
-        L += ["閾値を上げるほど良くなるわけではない（件数が減り、推定の誤差も大きくなる）。"
-              "レポートの印は、区分ごとに毎年安定していた層に合わせている：" +
-              "、".join("%s%s＝%s期待値%.1f以上" % (t, mk, "単勝" if col == "ev_win" else "複勝", thr)
-                       for t in TIERS for mk, col, thr, _, _ in MARK_RULES[t]), ""]
+        L += ["印の基準は、予測方法・運用ルールの総当たり検証（[benchmark.md](benchmark.md)）で決めている：" +
+              "、".join("%s%s＝%s期待値%.2f以上（%s）" % (t, mk, "単勝" if col == "ev_win" else "複勝", thr, "買い候補" if buy else "参考")
+                       for t in TIERS for mk, col, thr, _, buy in MARK_RULES[t]), ""]
     for tier in TIERS:
         base, ft, prof, ct = res[tier]
         L += ["## %s：条件ごとの成績（A/E順）" % tier, "", _md_table(ft, FT_FMT), "",

@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .config import JO_NAME, MARK_RULES, REPORT_DIR, STAKE_NOTE, TIERS, tier_of
+from .config import JO_NAME, MARK_RULES, REF_NOTE, REPORT_DIR, STAKE_NOTE, TIERS, tier_of
 from .pedigree import PedStore
 from .scoring import load_json, matched_factors
 
@@ -144,7 +144,7 @@ def race_markdown(df, card, odds_ts=None, minutes_to_post=None):
             if not (r["mark"] or miracle):
                 continue
             picks.append(r)
-            bet = ("（%s・買い候補）" % r["bet"] if is_buy(r["mark"]) else "（参考：%s。過去の回収率は100%%未満）" % r["bet"]) if r["bet"] else ""
+            bet = ("（%s・買い候補）" % r["bet"] if is_buy(r["mark"]) else "（参考：過去の回収率は100%未満）") if r["bet"] else ""
             head = "#### %s %d %s ― %s・%d番人気・単勝%.1f倍%s" % (r["mark"] or "血", r["num"], r["horse"], tier,
                                                            r["pop"], r["odds"], bet)
             body = ["- 推定3着内率 %s（オッズからの見込み %s の %.1f倍）／推定勝率 %s" % (
@@ -158,6 +158,8 @@ def race_markdown(df, card, odds_ts=None, minutes_to_post=None):
             if rot:
                 body.append("- 臨戦過程：" + "、".join(rot))
             body.append("- 血統：" + ped)
+            if r["mark"] and not is_buy(r["mark"]) and REF_NOTE.get(tier):
+                body.append("- " + REF_NOTE[tier])
             lines += [head] + body + [""]
     if not picks:
         lines += ["印の付く中穴・大穴はありません。", ""]
