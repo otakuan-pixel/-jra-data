@@ -14,7 +14,7 @@ import pickle
 import numpy as np
 import pandas as pd
 
-from .config import LONGSHOT_POP, MODEL_DIR
+from .config import MARK_RULES, MODEL_DIR, tier_series
 from .features import CATEGORICAL, NUMERIC
 
 TRAIN_POP = 6
@@ -138,26 +138,30 @@ def _roi(d):
                       "平均オッズ": d["odds"].mean()})
 
 
-def selection_table(wf, pop_min=LONGSHOT_POP):
-    d = wf[wf["pop"] >= pop_min]
-    rows = {"10番人気以下 全部": _roi(d)}
-    for q in (0.5, 0.2, 0.1, 0.05, 0.02):
-        thr = d["edge"].quantile(1 - q)
-        rows["エッジ上位%d%%" % int(q * 100)] = _roi(d[d["edge"] >= thr])
-    for t in (0.8, 0.9, 1.0, 1.1, 1.2):
-        rows["複勝期待値≥%.1f" % t] = _roi(d[d["ev_place"] >= t])
-    for t in (1.0, 1.2, 1.5):
-        rows["単勝期待値≥%.1f" % t] = _roi(d[d["ev_win"] >= t])
-    return pd.DataFrame(rows).T
+def selections(d, tier):
+    """選び方の一覧 → {名前: 真偽}（印の基準を含む）"""
+    sels = {"全部": pd.Series(True, index=d.index)}
+    for mk, col, thr, bet in MARK_RULES[tier]:
+        sels["印%s（%s期待値%.1f以上）" % (mk, "単勝" if col == "ev_win" else "複勝", thr)] = d[col] >= thr
+    for t in (0.8, 0.9, 1.0, 1.1):
+        sels["複勝期待値≥%.1f" % t] = d["ev_place"] >= t
+    for t in (1.0, 1.1, 1.2):
+        sels["単勝期待値≥%.1f" % t] = d["ev_win"] >= t
+    return sels
 
 
-def by_year(wf, col, thr, pop_min=LONGSHOT_POP):
-    d = wf[(wf["pop"] >= pop_min) & (wf[col] >= thr)]
+def selection_table(wf, tier):
+    d = wf[tier_series(wf) == tier]
+    return pd.DataFrame({k: _roi(d[m]) for k, m in selections(d, tier).items()}).T
+
+
+def by_year(wf, tier, col, thr):
+    d = wf[(tier_series(wf) == tier) & (wf[col] >= thr)]
     return d.groupby("year").apply(_roi, include_groups=False)
 
 
-def calibration(wf, pop_min=LONGSHOT_POP, bins=10):
-    d = wf[wf["pop"] >= pop_min].copy()
+def calibration(wf, tier, bins=10):
+    d = wf[tier_series(wf) == tier].copy()
     d["bin"] = pd.qcut(d["p_top3"], bins, duplicates="drop")
     return d.groupby("bin", observed=True).agg(n=("top3", "size"), pred=("p_top3", "mean"),
                                                mkt=("p_mkt", "mean"), actual=("top3", "mean"))

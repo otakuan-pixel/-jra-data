@@ -63,24 +63,29 @@ def _sum(d):
 
 
 def write_md(led):
+    from .config import MARK_RULES, TIERS
     led = led.copy()
     led["mark"] = led["mark"].fillna("")
-    groups = [("★（複勝期待値0.9以上）", led[led["mark"] == "★"]), ("☆（0.8以上）", led[led["mark"] == "☆"]),
-              ("★＋☆", led[led["mark"].isin(["★", "☆"])]), ("単（単勝期待値1.0以上）", led[led["mark"] == "単"]),
-              ("10番人気以下 全部（比較用）", led[led["pop"] >= 10]), ("8番人気以下 全部（比較用）", led)]
+    if "tier" not in led.columns:
+        led["tier"] = ""
     L = ["# 本番の成績（発走30分前に判定した馬）", "",
          "期間 %s〜%s。1頭100円ずつ買ったときの回収率。件数が少ないうちは偶然の振れが非常に大きい。" % (led["ymd"].min(), led["ymd"].max()), "",
-         "| 区分 | 頭数 | 3着内 | 3着内率 | 複勝回収率 | 単勝回収率 |", "|---|--:|--:|--:|--:|--:|"]
-    for name, d in groups:
-        s = _sum(d)
-        if s["頭数"] == 0:
-            continue
-        L.append("| %s | %d | %d | %.1f%% | %d%% | %d%% |" % (name, s["頭数"], s["3着内"], 100 * s["3着内率"],
-                                                         round(100 * s["複勝回収率"]), round(100 * s["単勝回収率"])))
-    hits = led[(led["mark"].isin(["★", "☆", "単"])) & (led["place"] <= 3)]
+         "| 区分 | 選び方 | 頭数 | 3着内 | 3着内率 | 複勝回収率 | 単勝回収率 |", "|---|---|--:|--:|--:|--:|--:|"]
+    for tier in TIERS:
+        c = led[led["tier"] == tier]
+        groups = [("印%s（%s向き）" % (mk, bet), c[c["mark"] == mk]) for mk, _, _, bet in MARK_RULES[tier]]
+        groups.append(("全部（比較用）", c))
+        for name, d in groups:
+            s = _sum(d)
+            if s["頭数"] == 0:
+                continue
+            L.append("| %s | %s | %d | %d | %.1f%% | %d%% | %d%% |" % (tier, name, s["頭数"], s["3着内"], 100 * s["3着内率"],
+                                                                 round(100 * s["複勝回収率"]), round(100 * s["単勝回収率"])))
+    hits = led[(led["mark"] != "") & (led["place"] <= 3)]
     if len(hits):
-        L += ["", "## 印の馬で3着内に来た馬", "", "| 日付 | レース | 馬 | 人気 | 着順 | 複勝 | 単勝 |", "|---|---|---|--:|--:|--:|--:|"]
+        L += ["", "## 印の馬で3着内に来た馬", "", "| 日付 | レース | 区分 | 馬 | 人気 | 着順 | 複勝 | 単勝 |",
+              "|---|---|---|---|--:|--:|--:|--:|"]
         for _, r in hits.sort_values("ymd").iterrows():
-            L.append("| %s | %s%dR | %s %s | %d | %d | %d円 | %d円 |" % (r["ymd"], r["jo"], r["rno"], r["mark"], r["horse"],
-                                                                 r["pop"], r["place"], r["place_pay"], r["win_pay"]))
+            L.append("| %s | %s%dR | %s | %s %s | %d | %d | %d円 | %d円 |" % (
+                r["ymd"], r["jo"], r["rno"], r["tier"], r["mark"], r["horse"], r["pop"], r["place"], r["place_pay"], r["win_pay"]))
     (REPORT_DIR / "ledger.md").write_text("\n".join(L) + "\n", encoding="utf-8")

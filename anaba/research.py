@@ -1,7 +1,7 @@
-"""大穴（10番人気以下）の好走条件の洗い出し
+"""中穴・大穴の好走条件の洗い出し（区分は config.tier_of：6番人気以下のうち 10〜30倍＝中穴、30倍以上＝大穴）
 
 好走した馬だけを眺めると「よくある条件」を拾ってしまう（生存者バイアス）。そこで、
-  - 同じ10番人気以下の全馬の中で、その条件に当てはまる馬の3着内率を、当てはまらない馬と比べる（リフト）
+  - 同じ区分（中穴／大穴）の全馬の中で、その条件に当てはまる馬の3着内率を、当てはまらない馬と比べる（リフト）
   - オッズから見て期待される3着内率と比べる（実績/期待 = A/E。1.0超えなら市場が過小評価）
   - 単勝・複勝の回収率（複勝は実測＋推定払戻）
   - 前半（2021〜23年）と後半（2024〜26年）の両方で同じ向きか（偶然の当たりを除くため）
@@ -10,7 +10,7 @@
 import numpy as np
 import pandas as pd
 
-from .config import LONGSHOT_POP
+from .config import tier_series
 
 
 def expected_top3(df):
@@ -103,8 +103,12 @@ def _stats(d):
                 win_roi=(d["win"] * d["odds"]).mean(), place_roi=d["place_pay"].mean() / 100.0)
 
 
-def factor_table(df, pop_min=LONGSHOT_POP, split="2024"):
-    d = df[(df["done"] == 1) & (df["pop"] >= pop_min)].copy()
+def _tier(df, tier):
+    return df[(df["done"] == 1) & (tier_series(df) == tier)]
+
+
+def factor_table(df, tier="大穴", split="2024"):
+    d = _tier(df, tier).copy()
     base = _stats(d)
     fs = factors(d)
     rows = []
@@ -123,9 +127,9 @@ def factor_table(df, pop_min=LONGSHOT_POP, split="2024"):
     return base, t.sort_values("A/E", ascending=False).reset_index(drop=True)
 
 
-def profile_table(df, pop_min=LONGSHOT_POP):
+def profile_table(df, tier="大穴"):
     """好走馬（3着内）と凡走馬の平均の比較（標準化差）"""
-    d = df[(df["done"] == 1) & (df["pop"] >= pop_min)]
+    d = _tier(df, tier)
     cols = {"log_odds": "単勝オッズ(log)", "p1_place_pct": "前走着順(頭数比)", "p1_tdiff": "前走 勝ち馬との差(秒)",
             "avg3_place_pct": "近3走の平均着順(頭数比)", "avg3_early": "近3走の位置取り(前ほど小)",
             "h_all_t3r": "通算3着内率", "h_course_t3r": "同コース3着内率", "h_jo_t3r": "同競馬場3着内率",
@@ -141,9 +145,9 @@ def profile_table(df, pop_min=LONGSHOT_POP):
     return pd.DataFrame(rows).sort_values("差（標準偏差単位）", key=lambda s: -s.abs()).reset_index(drop=True)
 
 
-def course_table(df, pop_min=LONGSHOT_POP, min_n=300):
-    """コース（場・芝ダ・距離）ごとの大穴の出やすさ"""
-    d = df[(df["done"] == 1) & (df["pop"] >= pop_min)]
+def course_table(df, tier="大穴", min_n=300):
+    """コース（場・芝ダ・距離）ごとの中穴・大穴の出やすさ"""
+    d = _tier(df, tier)
     g = d.groupby(["jo", "surf", "dist"])
     t = g.apply(lambda x: pd.Series(_stats(x)), include_groups=False).reset_index()
     t = t[t["n"] >= min_n]

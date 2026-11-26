@@ -89,7 +89,9 @@ def parse_entry(html, ymd=None, jo=None, rno=None):
     post = _t(hd.select_one(".cell.time")).replace("発走時刻：", "").strip()
     mp = re.search(r"(\d+)時(\d+)分", post)
     cat, klass = _t(hd.select_one(".cell.category")), _t(hd.select_one(".cell.class"))
-    surf = "障" if ("障害" in course or "→" in course) else ("ダ" if "ダート" in course else "芝")
+    # 障害戦はコース欄に「障害」と書かれないことがあるので、レース名・条件・見出し全体で判定する
+    is_jump = "障害" in " ".join([course, name, cat, klass, _t(hd)]) or "→" in course
+    surf = "障" if is_jump else ("ダ" if "ダート" in course else "芝")
     race = {
         "ymd": ymd, "jo": jo, "venue": JO_NAME.get(jo, jo), "rno": int(rno), "name": name, "grade": grade,
         "kai": int(mk.group(1)) if mk else 0, "nichi": int(mk.group(3)) if mk else 0,

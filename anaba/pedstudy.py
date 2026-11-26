@@ -50,15 +50,14 @@ def mh_or(d, col):
     return num / den if den > 0 else np.nan
 
 
-def logit_or(d, col):
-    """case ~ 1 + log(odds) + col のロジスティック回帰（ニュートン法）→ col のオッズ比"""
-    X = np.column_stack([np.ones(len(d)), np.log(d["odds"].values), d[col].astype(float).values])
-    y = d["case"].values.astype(float)
-    b = np.zeros(X.shape[1])
+def _logit_or_arr(lo, y, x):
+    """case ~ 1 + log(odds) + x のロジスティック回帰（ニュートン法）→ x のオッズ比"""
+    X = np.column_stack([np.ones(len(y)), lo, x])
+    b = np.zeros(3)
     for _ in range(50):
-        p = 1 / (1 + np.exp(-X @ b))
+        p = 1 / (1 + np.exp(-np.clip(X @ b, -30, 30)))
         W = p * (1 - p)
-        H = X.T @ (X * W[:, None]) + 1e-9 * np.eye(X.shape[1])
+        H = X.T @ (X * W[:, None]) + 1e-9 * np.eye(3)
         step = np.linalg.solve(H, X.T @ (y - p))
         b += step
         if np.abs(step).max() < 1e-8:
@@ -66,17 +65,28 @@ def logit_or(d, col):
     return float(np.exp(b[2]))
 
 
-def boot_ci(d, col, fn, n=400, seed=0):
+def logit_or(d, col):
+    return _logit_or_arr(np.log(d["odds"].values), d["case"].values.astype(float), d[col].astype(float).values)
+
+
+def boot_ci(d, col, fn=None, n=400, seed=0):
+    """レース単位のブートストラップで、オッズ補正オッズ比の95%区間"""
     rng = np.random.default_rng(seed)
-    ids = d["race_id"].unique()
-    groups = {k: g for k, g in d.groupby("race_id")}
+    lo = np.log(d["odds"].values)
+    y = d["case"].values.astype(float)
+    x = d[col].astype(float).values
+    codes, uniq = pd.factorize(d["race_id"])
+    order = np.argsort(codes, kind="stable")
+    starts = np.searchsorted(codes[order], np.arange(len(uniq)))
+    ends = np.append(starts[1:], len(order))
+    groups = [order[a:b] for a, b in zip(starts, ends)]
     vals = []
     for _ in range(n):
-        pick = rng.choice(ids, size=len(ids), replace=True)
-        s = pd.concat([groups[i] for i in pick])
-        if s[col].sum() == 0:
+        pick = rng.integers(0, len(groups), len(groups))
+        idx = np.concatenate([groups[i] for i in pick])
+        if x[idx].sum() == 0 or x[idx].sum() == len(idx):
             continue
-        v = fn(s, col)
+        v = _logit_or_arr(lo[idx], y[idx], x[idx])
         if np.isfinite(v):
             vals.append(v)
     if not vals:
@@ -119,7 +129,7 @@ def study(min_n=30, boot=400, log=print):
         r = {"label": label, "n_exposed": ne, "case_rate": float(d.loc[d["case"] == 1, "_x"].mean()),
              "ctrl_rate": float(d.loc[d["case"] == 0, "_x"].mean()),
              "mh_or": float(mh_or(d, "_x")), "or": logit_or(d, "_x")}
-        r["ci"] = boot_ci(d, "_x", logit_or, n=boot)
+        r["ci"] = boot_ci(d, "_x", n=boot)
         res[key] = r
     d = d.drop(columns="_x")
     # 父ごと（症例・対照の比較。参考）
@@ -130,9 +140,37 @@ def study(min_n=30, boot=400, log=print):
         d["_x"] = (d["sire"] == s).values
         sire_rows.append({"sire": s, "n": int(row["n"]), "case": int(row["case"]), "or": logit_or(d, "_x")})
     d = d.drop(columns="_x")
+    # 大穴（単勝30倍以上）だけに絞った場合の奇跡の血量
+    sub = d[d["odds"] >= 30]
+    sub = sub[sub["race_id"].map(sub.groupby("race_id")["case"].agg(lambda x: x.nunique() == 2))]
+    ooana = None
+    if len(sub) and sub["miracle"].sum() >= min_n:
+        sub = sub.assign(_x=sub["miracle"].astype(bool))
+        ooana = {"label": "奇跡の血量（大穴＝単勝30倍以上だけ）", "n_exposed": int(sub["_x"].sum()),
+                 "case_rate": float(sub.loc[sub["case"] == 1, "_x"].mean()), "ctrl_rate": float(sub.loc[sub["case"] == 0, "_x"].mean()),
+                 "mh_or": float(mh_or(sub, "_x")), "or": logit_or(sub, "_x"), "ci": boot_ci(sub, "_x", n=boot),
+                 "n_case": int((sub["case"] == 1).sum()), "n_ctrl": int((sub["case"] == 0).sum())}
+        res["miracle_ooana"] = ooana
+    # 父 × 芝ダ（同じレースの中の比較なので「その馬場に血統が合うか」に近い）
+    surf_rows = []
+    try:
+        from .data import load_results
+        races_, _ = load_results()
+        sm = races_.assign(rno=races_["rno"].astype(int))[["ymd", "jo", "rno", "surf"]]
+        dd = d.merge(sm, on=["ymd", "jo", "rno"], how="left")
+        for (sire, surf), g in dd.groupby(["sire", "surf"]):
+            if len(g) < min_n or g["case"].sum() < 5:
+                continue
+            dd["_x"] = ((dd["sire"] == sire) & (dd["surf"] == surf)).values
+            sub = dd[dd["surf"] == surf]
+            surf_rows.append({"sire": sire, "surf": surf, "n": int(len(g)), "case": int(g["case"].sum()),
+                              "or": logit_or(sub, "_x"), "ci": boot_ci(sub, "_x", n=max(100, boot // 2))})
+    except FileNotFoundError:
+        pass
+    out_surf = sorted(surf_rows, key=lambda x: -x["or"])
     out = {"n_case": int((d["case"] == 1).sum()), "n_ctrl": int((d["case"] == 0).sum()),
            "n_race": int(d["race_id"].nunique()), "period": "%s〜%s" % (d["ymd"].min(), d["ymd"].max()),
-           "tests": res, "sires": sorted(sire_rows, key=lambda x: -x["or"])}
+           "tests": res, "sires": sorted(sire_rows, key=lambda x: -x["or"]), "sire_surf": out_surf}
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     eff = {}
     if "miracle" in res:
@@ -156,7 +194,17 @@ def write_md(out, path=None, min_n=30):
     for k, r in sorted(out["tests"].items(), key=lambda kv: (not kv[0].startswith(("miracle", "max", "close", "no_", "many")), kv[0])):
         L.append("| %s | %d | %.1f%% | %.1f%% | %.2f | %.2f | %.2f〜%.2f |" % (
             r["label"], r["n_exposed"], 100 * r["case_rate"], 100 * r["ctrl_rate"], r["mh_or"], r["or"], r["ci"][0], r["ci"][1]))
-    L += ["", "## 父ごと（参考：%d頭以上）" % min_n, "", "| 父 | 頭数 | 症例 | オッズ比（オッズ補正） |", "|---|--:|--:|--:|"]
+    ss = out.get("sire_surf") or []
+    if ss:
+        sig = [x for x in ss if x["ci"][0] > 1.0 or x["ci"][1] < 1.0]
+        L += ["", "## 父 × 芝ダ（同じ馬場のレースの中で、10番人気以下のその父の産駒が3着内に来やすいか）", "",
+              "多くの父を同時に比べているので、偶然でも1.5倍前後の差は普通に出る。**95%%区間が1.0をまたがないもの**（%d件）を太字にした。"
+              % len(sig), "", "| 父 | 芝ダ | 頭数 | 症例 | オッズ比（オッズ補正） | 95%区間 |", "|---|---|--:|--:|--:|---|"]
+        for x in ss:
+            b = "**" if (x["ci"][0] > 1.0 or x["ci"][1] < 1.0) else ""
+            L.append("| %s%s%s | %s | %d | %d | %s%.2f%s | %.2f〜%.2f |" % (b, x["sire"], b, x["surf"], x["n"], x["case"],
+                                                                     b, x["or"], b, x["ci"][0], x["ci"][1]))
+    L += ["", "## 父ごと（参考：%d頭以上。芝ダを混ぜた集計）" % min_n, "", "| 父 | 頭数 | 症例 | オッズ比（オッズ補正） |", "|---|--:|--:|--:|"]
     rows = out["sires"] if len(out["sires"]) <= 25 else out["sires"][:15] + [None] + out["sires"][-10:]
     for s in rows:
         L.append("| … | | | |" if s is None else "| %s | %d | %d | %.2f |" % (s["sire"], s["n"], s["case"], s["or"]))

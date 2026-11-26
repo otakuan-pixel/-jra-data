@@ -159,3 +159,14 @@ def test_due_window(tmp_path):
 def test_netkeiba_race_id():
     from anaba.live import nk_race_id
     assert nk_race_id("20261122", "05", 5, 5, 11) == "202605050511"
+
+
+def test_tier_of():
+    from anaba.config import tier_of
+    assert tier_of(15.0, 7) == "中穴"
+    assert tier_of(29.9, 10) == "中穴"        # 10番人気でも30倍未満は中穴
+    assert tier_of(30.0, 10) == "大穴"
+    assert tier_of(45.0, 9) == "大穴"         # 人気とずれたらオッズで分ける
+    assert tier_of(8.0, 6) == ""              # 10倍未満は対象外
+    assert tier_of(50.0, 5) == ""             # 5番人気以内は対象外
+    assert tier_of(None, 12) == ""

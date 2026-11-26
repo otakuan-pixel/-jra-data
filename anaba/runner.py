@@ -66,7 +66,7 @@ def ensure_day(http, ymd, st, log=print, prefetch_peds=True, max_ped=600):
     return st
 
 
-def run_live(ymd=None, lo=25, hi=35, only=None, notify=True, prefetch=True, log=print):
+def run_live(ymd=None, lo=25, hi=35, only=None, notify=True, prefetch=False, log=print):
     from .notify import send
     now = now_jst()
     ymd = ymd or now.strftime("%Y%m%d")
@@ -117,6 +117,15 @@ def run_live(ymd=None, lo=25, hi=35, only=None, notify=True, prefetch=True, log=
         if cr["odds"].isna().mean() > 0.3:
             log("オッズ未発売のため判定できません：%s（次の回で再試行）" % key)
             continue
+        # 発走前オッズが付いていない馬は取消・除外とみなして外す（netkeiba は取消馬にオッズを付けない）
+        miss = cr["odds"].isna()
+        if odds:
+            miss = miss | ~cr["num"].isin(list(odds))
+        gone = cr[miss]
+        if len(gone):
+            log("取消・除外とみなす：%s %s" % (key, "、".join(gone["horse"])))
+            cr = cr.drop(gone.index)
+            cr["pop"] = cr["odds"].rank(method="first")
         fetch_peds_for(list(cr["horse_id"]), max_requests=40, log=log)
         cards.append(card)
         runs_list.append(cr)
@@ -165,3 +174,80 @@ def replay(ymd, race_key, log=print):
         md += "\n\n実際の結果：" + " → ".join("%d着 %d %s（%d番人気）" % (r.place, r.num, r.horse, r["pop"])
                                              for _, r in top.iterrows() if r.place == r.place)
     return md, scored
+
+
+def replay_days(dates, out_dir=None, log=print):
+    """過去の開催日をまるごと再現する（最初の日より前のデータだけで学習したモデル・確定オッズ）
+    → reports/replay/<最初の日>-<最後の日>/ にレースごとのレポートと、印ごとの成績のまとめ"""
+    import pandas as pd
+
+    from . import payout
+    from .config import MARK_RULES, TIERS, tier_series
+    from .data import KEY
+    from .report import mark_of
+    dates = sorted(dates)
+    out_dir = Path(out_dir or (day_dir(dates[0]).parent / "replay" / ("%s-%s" % (dates[0], dates[-1]))))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    races, hist = load_results(JRA2_REPO)
+    cards, runs_list, results = [], [], {}
+    for ymd in dates:
+        for path in sorted((Path(JRA2_REPO) / "data" / "entries" / ymd).glob("*.html")):
+            jo, rno = path.stem.split("_")
+            card = parse_entry(path.read_bytes(), ymd, jo, int(rno))
+            if not card or card["surf"] == "障":
+                continue
+            res = hist[(hist["ymd"] == ymd) & (hist["jo"] == jo) & (hist["rno"] == int(rno))]
+            ok = res[res["status"].isin(["", "中止", "降着"]) & res["odds"].notna()]
+            if ok.empty:
+                continue
+            odds = {int(r.num): {"win": r.odds, "pop": int(r["pop"])} for _, r in ok.iterrows()}
+            cr = card_to_runs(card, res["cond"].iloc[0], odds)
+            cr = cr[(cr["status"] == "") & cr["num"].isin(list(odds))]
+            cards.append(card)
+            runs_list.append(cr)
+            results[(ymd, jo, int(rno))] = res
+    log("再現：%d 日・%d レース" % (len(dates), len(cards)))
+    scored = score_cards(runs_list, hist=hist, horses=H.load(), cutoff=dates[0], log=log)
+    pp = payout.place_payouts(races, hist)
+    scored = scored.merge(pp, on=KEY + ["num"], how="left")
+    scored["place_pay"] = scored["place_pay"].fillna(0.0)
+    res_all = pd.concat(results.values())[KEY + ["num", "place", "odds"]].rename(columns={"place": "fin", "odds": "fodds"})
+    scored = scored.merge(res_all, on=KEY + ["num"], how="left")
+    mb = scored.apply(mark_of, axis=1)
+    scored["mark"] = [m for m, _ in mb]
+    scored["bet"] = [b for _, b in mb]
+    scored["tier"] = tier_series(scored)
+    index = ["| 日付 | レース | 印 | 1〜3着（人気） |", "|---|---|---|---|"]
+    for card in cards:
+        d = scored[(scored["ymd"] == card["ymd"]) & (scored["jo"] == card["jo"]) & (scored["rno"] == card["rno"])]
+        md, picks = race_markdown(d, card, odds_ts="確定オッズ（再現）")
+        res = results[(card["ymd"], card["jo"], card["rno"])]
+        top = res[res["place"] <= 3].sort_values("place")
+        line = " → ".join("%d %s（%d）" % (r.num, r.horse, r["pop"]) for _, r in top.iterrows())
+        md += "\n\n実際の結果：" + line + "\n"
+        name = "%s_%s_%02d.md" % (card["ymd"], card["jo"], card["rno"])
+        (out_dir / name).write_text(md, encoding="utf-8")
+        marks = " ".join("%s%d" % (x["mark"] or "血", x["num"]) for x in picks)
+        index.append("| %s | [%s](%s) | %s | %s |" % (card["ymd"], race_label_short(card), name, marks, line))
+    rows = ["| 区分 | 選び方 | 頭数 | 3着内 | 複勝回収率 | 単勝回収率 |", "|---|---|--:|--:|--:|--:|"]
+    for tier in TIERS:
+        c = scored[scored["tier"] == tier]
+        sels = [("印%s（%s向き）" % (mk, bet), c["mark"] == mk) for mk, _, _, bet in MARK_RULES[tier]]
+        for nm, m in sels + [("全部", c["tier"] == tier)]:
+            g = c[m]
+            if len(g):
+                rows.append("| %s | %s | %d | %d | %d%% | %d%% |" % (
+                    tier, nm, len(g), int((g["fin"] <= 3).sum()), round(g["place_pay"].mean()),
+                    round(100 * ((g["fin"] == 1) * g["fodds"]).mean())))
+    head = ["# 再現：%s〜%s（%dレース）" % (dates[0], dates[-1], len(cards)), "",
+            "モデルは %s より前のデータだけで学習し、確定オッズで判定（本番は発走30分前のオッズなので少し条件が違う）。"
+            "件数が少ないので成績の証拠にはならない。出力の見本として見ること。" % dates[0], "",
+            "## 区分・印ごとの成績", ""] + rows + ["", "## レース一覧", ""] + index
+    (out_dir / "README.md").write_text("\n".join(head) + "\n", encoding="utf-8")
+    log("保存：%s" % out_dir)
+    return scored
+
+
+def race_label_short(card):
+    from .config import JO_NAME
+    return "%s%dR %s" % (JO_NAME.get(card["jo"], card["jo"]), card["rno"], card["name"])

@@ -26,8 +26,8 @@ def main(argv=None):
     b.add_argument("--date")
     b.add_argument("--max", type=int, default=800)
     b = sub.add_parser("replay")
-    b.add_argument("--date", required=True)
-    b.add_argument("--race", required=True)
+    b.add_argument("--date", required=True, help="YYYYMMDD（カンマ区切りで複数日。--race を省くとその日の全レース）")
+    b.add_argument("--race")
     b = sub.add_parser("train")
     b.add_argument("--no-validate", action="store_true")
     sub.add_parser("horses")
@@ -53,9 +53,12 @@ def main(argv=None):
         st = ensure_day(Http(), ymd, st, max_ped=a.max)
         _save_state(ymd, st)
     elif a.cmd == "replay":
-        from .runner import replay
-        md, _ = replay(a.date, a.race)
-        print(md)
+        from .runner import replay, replay_days
+        if a.race:
+            md, _ = replay(a.date, a.race)
+            print(md)
+        else:
+            replay_days(a.date.split(","))
     elif a.cmd == "train":
         from .train import train
         train(do_validate=not a.no_validate)
