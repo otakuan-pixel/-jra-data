@@ -1,0 +1,46 @@
+name: 大穴レポート：前夜の準備（レース一覧と5代血統）
+
+on:
+  schedule:
+    - cron: "0 12 * * 5,6,0"   # 金・土・日の 21:00 JST に「翌日」の分（開催が無ければ何もしない）
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "対象日 YYYYMMDD（空欄なら翌日）"
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: anaba-git
+  cancel-in-progress: false
+
+jobs:
+  prefetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TZ: Asia/Tokyo
+      ANABA_CACHE: ${{ runner.temp }}/anaba-cache
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install --quiet -r requirements.txt
+      - name: レース一覧と出走馬の血統
+        run: |
+          D="${{ inputs.date }}"
+          [ -z "$D" ] && D=$(date -d tomorrow +%Y%m%d)
+          python -m anaba prefetch --date "$D" --max 900
+      - name: コミット
+        if: always()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports data/pedigree data/horses.csv 2>/dev/null || true
+          if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
+          git commit -q -m "前夜の準備 $(date +%Y-%m-%dT%H:%M)"
+          for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 5; done
