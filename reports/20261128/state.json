@@ -1,0 +1,221 @@
+{
+ "races": {
+  "05_01": {
+   "cname": "pw01dde0105202605070120261128/06",
+   "kai": 5,
+   "nichi": 7,
+   "post": "09:50",
+   "label": "東京1R 2歳未勝利",
+   "surf": "ダ",
+   "reported": null
+  },
+  "05_02": {
+   "cname": "pw01dde0105202605070220261128/BB",
+   "kai": 5,
+   "nichi": 7,
+   "post": "10:20",
+   "label": "東京2R 2歳未勝利",
+   "surf": "ダ",
+   "reported": null
+  },
+  "05_03": {
+   "cname": "pw01dde0105202605070320261128/70",
+   "kai": 5,
+   "nichi": 7,
+   "post": "10:50",
+   "label": "東京3R 2歳未勝利",
+   "surf": "芝",
+   "reported": null
+  },
+  "05_04": {
+   "cname": "pw01dde0105202605070420261128/25",
+   "kai": 5,
+   "nichi": 7,
+   "post": "11:20",
+   "label": "東京4R メイクデビュー東京",
+   "surf": "ダ",
+   "reported": null
+  },
+  "05_05": {
+   "cname": "pw01dde0105202605070520261128/DA",
+   "kai": 5,
+   "nichi": 7,
+   "post": "12:10",
+   "label": "東京5R メイクデビュー東京",
+   "surf": "芝",
+   "reported": null
+  },
+  "05_06": {
+   "cname": "pw01dde0105202605070620261128/8F",
+   "kai": 5,
+   "nichi": 7,
+   "post": "12:40",
+   "label": "東京6R メイクデビュー東京",
+   "surf": "ダ",
+   "reported": null
+  },
+  "05_07": {
+   "cname": "pw01dde0105202605070720261128/44",
+   "kai": 5,
+   "nichi": 7,
+   "post": "13:10",
+   "label": "東京7R 3歳以上1勝クラス",
+   "surf": "ダ",
+   "reported": null
+  },
+  "05_08": {
+   "cname": "pw01dde0105202605070820261128/F9",
+   "kai": 5,
+   "nichi": 7,
+   "post": "13:40",
+   "label": "東京8R 3歳以上2勝クラス",
+   "surf": "芝",
+   "reported": null
+  },
+  "05_09": {
+   "cname": "pw01dde0105202605070920261128/AE",
+   "kai": 5,
+   "nichi": 7,
+   "post": "14:15",
+   "label": "東京9R セレブレイション賞",
+   "surf": "ダ",
+   "reported": null
+  },
+  "05_10": {
+   "cname": "pw01dde0105202605071020261128/A3",
+   "kai": 5,
+   "nichi": 7,
+   "post": "14:50",
+   "label": "東京10R シャングリラステークス",
+   "surf": "ダ",
+   "reported": null
+  },
+  "05_11": {
+   "cname": "pw01dde0105202605071120261128/58",
+   "kai": 5,
+   "nichi": 7,
+   "post": "15:25",
+   "label": "東京11R フランスギャロ賞キャピタルステークス",
+   "surf": "芝",
+   "reported": null
+  },
+  "05_12": {
+   "cname": "pw01dde0105202605071220261128/0D",
+   "kai": 5,
+   "nichi": 7,
+   "post": "16:00",
+   "label": "東京12R 3歳以上1勝クラス",
+   "surf": "芝",
+   "reported": null
+  },
+  "08_01": {
+   "cname": "pw01dde0108202605070120261128/E4",
+   "kai": 5,
+   "nichi": 7,
+   "post": "10:05",
+   "label": "京都1R 2歳未勝利",
+   "surf": "ダ",
+   "reported": null
+  },
+  "08_02": {
+   "cname": "pw01dde0108202605070220261128/99",
+   "kai": 5,
+   "nichi": 7,
+   "post": "10:35",
+   "label": "京都2R 2歳未勝利",
+   "surf": "ダ",
+   "reported": null
+  },
+  "08_03": {
+   "cname": "pw01dde0108202605070320261128/4E",
+   "kai": 5,
+   "nichi": 7,
+   "post": "11:05",
+   "label": "京都3R 2歳未勝利",
+   "surf": "芝",
+   "reported": null
+  },
+  "08_04": {
+   "cname": "pw01dde0108202605070420261128/03",
+   "kai": 5,
+   "nichi": 7,
+   "post": "11:35",
+   "label": "京都4R 障害3歳以上未勝利",
+   "surf": "障",
+   "reported": null
+  },
+  "08_05": {
+   "cname": "pw01dde0108202605070520261128/B8",
+   "kai": 5,
+   "nichi": 7,
+   "post": "12:25",
+   "label": "京都5R メイクデビュー京都",
+   "surf": "芝",
+   "reported": null
+  },
+  "08_06": {
+   "cname": "pw01dde0108202605070620261128/6D",
+   "kai": 5,
+   "nichi": 7,
+   "post": "12:55",
+   "label": "京都6R メイクデビュー京都",
+   "surf": "ダ",
+   "reported": null
+  },
+  "08_07": {
+   "cname": "pw01dde0108202605070720261128/22",
+   "kai": 5,
+   "nichi": 7,
+   "post": "13:25",
+   "label": "京都7R 3歳以上1勝クラス",
+   "surf": "芝",
+   "reported": null
+  },
+  "08_08": {
+   "cname": "pw01dde0108202605070820261128/D7",
+   "kai": 5,
+   "nichi": 7,
+   "post": "13:55",
+   "label": "京都8R 3歳以上2勝クラス",
+   "surf": "ダ",
+   "reported": null
+  },
+  "08_09": {
+   "cname": "pw01dde0108202605070920261128/8C",
+   "kai": 5,
+   "nichi": 7,
+   "post": "14:30",
+   "label": "京都9R 栂尾特別",
+   "surf": "ダ",
+   "reported": null
+  },
+  "08_10": {
+   "cname": "pw01dde0108202605071020261128/81",
+   "kai": 5,
+   "nichi": 7,
+   "post": "15:05",
+   "label": "京都10R 東山ステークス",
+   "surf": "芝",
+   "reported": null
+  },
+  "08_11": {
+   "cname": "pw01dde0108202605071120261128/36",
+   "kai": 5,
+   "nichi": 7,
+   "post": "15:40",
+   "label": "京都11R ラジオNIKKEI杯京都2歳ステークス",
+   "surf": "芝",
+   "reported": null
+  },
+  "08_12": {
+   "cname": "pw01dde0108202605071220261128/EB",
+   "kai": 5,
+   "nichi": 7,
+   "post": "16:15",
+   "label": "京都12R 3歳以上2勝クラス",
+   "surf": "芝",
+   "reported": null
+  }
+ },
+ "checked": "2026-11-26T22:23:41.477407+09:00"
+}

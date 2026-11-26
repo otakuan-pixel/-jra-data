@@ -26,7 +26,6 @@ jobs:
     env:
       TZ: Asia/Tokyo
       JRA2_REPO: ${{ github.workspace }}/jra2
-      ANABA_CACHE: ${{ runner.temp }}/anaba-cache
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
