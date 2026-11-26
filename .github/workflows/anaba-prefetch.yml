@@ -22,7 +22,6 @@ jobs:
     timeout-minutes: 40
     env:
       TZ: Asia/Tokyo
-      ANABA_CACHE: ${{ runner.temp }}/anaba-cache
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
