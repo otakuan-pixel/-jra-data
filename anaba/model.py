@@ -141,7 +141,7 @@ def _roi(d):
 def selections(d, tier):
     """選び方の一覧 → {名前: 真偽}（印の基準を含む）"""
     sels = {"全部": pd.Series(True, index=d.index)}
-    for mk, col, thr, bet in MARK_RULES[tier]:
+    for mk, col, thr, bet, _ in MARK_RULES[tier]:
         sels["印%s（%s期待値%.1f以上）" % (mk, "単勝" if col == "ev_win" else "複勝", thr)] = d[col] >= thr
     for t in (0.8, 0.9, 1.0, 1.1):
         sels["複勝期待値≥%.1f" % t] = d["ev_place"] >= t

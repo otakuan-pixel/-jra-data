@@ -8,6 +8,8 @@
   backfill  過去レースの血統を netkeiba から少しずつ集める（症例対照）
   pedstudy  血統（奇跡の血量など）の検証
   settle    レポートで挙げた馬の答え合わせ
+  bench     予測方法・運用ルールの総当たり検証
+  payouts   全レースの払戻（全券種）を集める（券種の比較用）
 """
 import argparse
 import sys
@@ -40,6 +42,11 @@ def main(argv=None):
     b.add_argument("--min-n", type=int, default=30)
     b.add_argument("--boot", type=int, default=400)
     sub.add_parser("settle")
+    b = sub.add_parser("bench", help="予測方法・運用ルールの総当たり検証（約20分）→ reports/research/benchmark.md")
+    b.add_argument("--rebuild", action="store_true", help="特徴量と予測を作り直す")
+    b = sub.add_parser("payouts", help="全レースの払戻（全券種）を netkeiba から集める")
+    b.add_argument("--since", default="20250101")
+    b.add_argument("--max-requests", type=int, default=3000)
     a = ap.parse_args(argv)
 
     if a.cmd == "live":
@@ -74,6 +81,16 @@ def main(argv=None):
     elif a.cmd == "settle":
         from .settle import settle
         settle()
+    elif a.cmd == "bench":
+        from . import bench, bench_report
+        if a.rebuild:
+            for p in (bench.FRAME, bench.CACHE / "bench_preds.pkl"):
+                if p.exists():
+                    p.unlink()
+        bench_report.write_final(bench_report.final())
+    elif a.cmd == "payouts":
+        from .backfill import payouts_all
+        payouts_all(since=a.since, max_requests=a.max_requests)
     return 0
 
 

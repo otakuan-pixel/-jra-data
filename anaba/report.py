@@ -1,10 +1,10 @@
 """発走30分前レポート（Markdown）
 
 区分（config.tier_of）：6番人気以下のうち 単勝10〜30倍＝中穴、30倍以上＝大穴。
-印と推奨券種は区分ごと（config.MARK_RULES）：
-  中穴 ★＝単勝期待値1.1以上（単勝向き） ☆＝複勝期待値0.9以上
-  大穴 ★＝複勝期待値0.9以上（複勝向き） ☆＝複勝期待値0.8以上
-  血  ＝印は無いが奇跡の血量（3×4／4×3）を持つ
+印（config.MARK_RULES。総当たり検証で決めた）：
+  ★ 中穴・単勝期待値1.45以上 … 買い候補（単勝）
+  △ 大穴・複勝期待値1.0以上 … 参考（過去の回収率は100%に届いていない）
+  血 印は無いが奇跡の血量（3×4／4×3）を持つ
 """
 import csv
 from pathlib import Path
@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .config import JO_NAME, MARK_RULES, REPORT_DIR, TIERS, tier_of
+from .config import JO_NAME, MARK_RULES, REPORT_DIR, STAKE_NOTE, TIERS, tier_of
 from .pedigree import PedStore
 from .scoring import load_json, matched_factors
 
@@ -29,10 +29,14 @@ def tier_row(r):
 def mark_of(r):
     """→ (印, 推奨券種)。印が無ければ ("", "")"""
     t = tier_row(r)
-    for mk, col, thr, bet in MARK_RULES.get(t, []):
+    for mk, col, thr, bet, _ in MARK_RULES.get(t, []):
         if r[col] >= thr:
             return mk, bet
     return "", ""
+
+
+def is_buy(mark):
+    return any(mk == mark and buy for rules in MARK_RULES.values() for mk, _, _, _, buy in rules)
 
 
 def _pct(x):
@@ -78,8 +82,8 @@ def _ped_line(store, hid, sire, bms, ped_effect):
 
 
 def _rules_text(tier):
-    return "、".join("%s＝%s期待値%.1f以上" % (mk, "単勝" if col == "ev_win" else "複勝", thr)
-                    for mk, col, thr, _ in MARK_RULES[tier])
+    return "、".join("%s＝%s期待値%.2f以上（%s）" % (mk, "単勝" if col == "ev_win" else "複勝", thr, "買い候補" if buy else "参考")
+                    for mk, col, thr, _, buy in MARK_RULES[tier])
 
 
 def race_markdown(df, card, odds_ts=None, minutes_to_post=None):
@@ -105,6 +109,12 @@ def race_markdown(df, card, odds_ts=None, minutes_to_post=None):
     mb = d.apply(mark_of, axis=1)
     d["mark"] = [m for m, _ in mb]
     d["bet"] = [b for _, b in mb]
+    buys = d[d["mark"].map(is_buy)].sort_values("ev_win", ascending=False)
+    if len(buys):
+        lines += ["**★買い候補**：" + "、".join("%d %s（%s・単勝%.1f倍・期待値%.2f）" % (r["num"], r["horse"], r["tier"], r["odds"], r["ev_win"])
+                                         for _, r in buys.iterrows()), ""]
+    else:
+        lines += ["★買い候補：なし", ""]
     picks = []
     for tier in TIERS:
         cand = d[d["tier"] == tier]
@@ -113,7 +123,7 @@ def race_markdown(df, card, odds_ts=None, minutes_to_post=None):
         if cand.empty:
             lines += ["該当馬なし", ""]
             continue
-        key = "ev_win" if MARK_RULES[tier][0][1] == "ev_win" else "ev_place"
+        key = MARK_RULES[tier][0][1]
         cand = cand.sort_values(key, ascending=False)
         lines += ["| 印 | 馬番 | 馬名 | 単勝 | 人気 | 複勝 | 3着内率 モデル／市場 | 複勝期待値 | 単勝期待値 |",
                   "|:-:|--:|---|--:|--:|--:|--:|--:|--:|"]
@@ -134,7 +144,7 @@ def race_markdown(df, card, odds_ts=None, minutes_to_post=None):
             if not (r["mark"] or miracle):
                 continue
             picks.append(r)
-            bet = "（%s向き）" % r["bet"] if r["bet"] else ""
+            bet = ("（%s・買い候補）" % r["bet"] if is_buy(r["mark"]) else "（参考：%s。過去の回収率は100%%未満）" % r["bet"]) if r["bet"] else ""
             head = "#### %s %d %s ― %s・%d番人気・単勝%.1f倍%s" % (r["mark"] or "血", r["num"], r["horse"], tier,
                                                            r["pop"], r["odds"], bet)
             body = ["- 推定3着内率 %s（オッズからの見込み %s の %.1f倍）／推定勝率 %s" % (
@@ -170,7 +180,7 @@ def race_markdown(df, card, odds_ts=None, minutes_to_post=None):
             tier, _rules_text(tier), "／".join(ms), round(100 * base["place_roi"]), round(100 * base["win_roi"])))
     if foot:
         lines.append("<sub>過去の検証（%s、その年より前だけで学習・確定オッズ）　%s。期待値1.0＝回収率100%%の見込み。"
-                     "期待値は推定で、100%%を超える保証はありません。</sub>" % (val.get("period", ""), "　".join(foot)))
+                     "期待値は推定で、100%%を超える保証はありません。%s。</sub>" % (val.get("period", ""), "　".join(foot), STAKE_NOTE))
     return "\n".join(lines), picks
 
 

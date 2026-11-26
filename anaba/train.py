@@ -92,7 +92,7 @@ def validate(df, log=print):
                             "win_roi": {str(y): float((g["win"] * g["odds"]).mean()) for y, g in d[m].groupby("year")}}
                         for k, m in ss.items()}
         v["marks"] = {}
-        for mk, col, thr, bet in MARK_RULES[tier]:
+        for mk, col, thr, bet, _ in MARK_RULES[tier]:
             m = d[col] >= thr
             r = js(d[m])
             r["bet"] = bet
@@ -138,7 +138,7 @@ def write_research_md(res, sels=None, val=None, path=None):
         L += ["閾値を上げるほど良くなるわけではない（件数が減り、推定の誤差も大きくなる）。"
               "レポートの印は、区分ごとに毎年安定していた層に合わせている：" +
               "、".join("%s%s＝%s期待値%.1f以上" % (t, mk, "単勝" if col == "ev_win" else "複勝", thr)
-                       for t in TIERS for mk, col, thr, _ in MARK_RULES[t]), ""]
+                       for t in TIERS for mk, col, thr, _, _ in MARK_RULES[t]), ""]
     for tier in TIERS:
         base, ft, prof, ct = res[tier]
         L += ["## %s：条件ごとの成績（A/E順）" % tier, "", _md_table(ft, FT_FMT), "",

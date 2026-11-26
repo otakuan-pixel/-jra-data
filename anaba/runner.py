@@ -41,6 +41,34 @@ def _update_index(ymd, st):
     (day_dir(ymd) / "README.md").write_text("\n".join(rows) + "\n", encoding="utf-8")
 
 
+def snapshot_odds(http, ymd, st, now, horizon=120, log=print):
+    """発走前2時間以内の全レースの単勝・複勝オッズを記録する（締切までのオッズの動きを、今後の検証に使うため）
+    → reports/<日付>/odds_snap.csv（1行＝1頭×1回）"""
+    import csv
+    path = day_dir(ymd) / "odds_snap.csv"
+    new = not path.exists()
+    rows = []
+    for key, r in sorted(st.get("races", {}).items()):
+        pdt = post_datetime(ymd, r.get("post"))
+        if not pdt or r.get("surf") == "障":
+            continue
+        mins = (pdt - now).total_seconds() / 60
+        if not (0 < mins <= horizon):
+            continue
+        jo, rno = key.split("_")
+        odds, ts = nk_odds(http, nk_race_id(ymd, jo, r["kai"], r["nichi"], rno))
+        for num, o in sorted(odds.items()):
+            rows.append([key, int(mins), ts or "", num, o.get("win"), o.get("pop"), o.get("place_lo"), o.get("place_hi")])
+    if rows:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            if new:
+                w.writerow(["race", "mins_to_post", "odds_time", "num", "win", "pop", "place_lo", "place_hi"])
+            w.writerows(rows)
+        log("オッズ記録：%d 行" % len(rows))
+
+
 def ensure_day(http, ymd, st, log=print, prefetch_peds=True, max_ped=600):
     """その日のレース一覧（cname・発走時刻）を作る。初回だけ全レースの出馬表を読む"""
     if st.get("races"):
@@ -92,6 +120,8 @@ def run_live(ymd=None, lo=25, hi=35, only=None, notify=True, prefetch=False, log
         # 予定どおりなら 25〜35分前（10分おきの実行で1回は入る）。Actions の遅れで過ぎても、発走3分前までは出す
         if lo <= mins <= hi or (3 <= mins < lo):
             targets.append(key)
+    if not only:
+        snapshot_odds(http, ymd, st, now, log=log)
     if not targets:
         log("報告するレースはありません（%s）" % now.strftime("%H:%M"))
         return []
@@ -232,7 +262,7 @@ def replay_days(dates, out_dir=None, log=print):
     rows = ["| 区分 | 選び方 | 頭数 | 3着内 | 複勝回収率 | 単勝回収率 |", "|---|---|--:|--:|--:|--:|"]
     for tier in TIERS:
         c = scored[scored["tier"] == tier]
-        sels = [("印%s（%s向き）" % (mk, bet), c["mark"] == mk) for mk, _, _, bet in MARK_RULES[tier]]
+        sels = [("印%s（%s・%s）" % (mk, bet, "買い候補" if buy else "参考"), c["mark"] == mk) for mk, _, _, bet, buy in MARK_RULES[tier]]
         for nm, m in sels + [("全部", c["tier"] == tier)]:
             g = c[m]
             if len(g):

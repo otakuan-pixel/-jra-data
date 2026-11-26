@@ -170,3 +170,13 @@ def test_tier_of():
     assert tier_of(8.0, 6) == ""              # 10倍未満は対象外
     assert tier_of(50.0, 5) == ""             # 5番人気以内は対象外
     assert tier_of(None, 12) == ""
+
+
+def test_mark_rules():
+    from anaba.report import is_buy, mark_of
+    base = {"ev_win": 0.0, "ev_place": 0.0}
+    assert mark_of({**base, "odds": 20.0, "pop": 8, "ev_win": 1.5}) == ("★", "単勝")
+    assert mark_of({**base, "odds": 20.0, "pop": 8, "ev_win": 1.2}) == ("", "")      # 1.1〜1.45 の帯は印なし
+    assert mark_of({**base, "odds": 60.0, "pop": 12, "ev_place": 1.05}) == ("△", "複勝")
+    assert mark_of({**base, "odds": 60.0, "pop": 12, "ev_win": 3.0}) == ("", "")      # 大穴の単勝期待値では印を付けない
+    assert is_buy("★") and not is_buy("△") and not is_buy("")

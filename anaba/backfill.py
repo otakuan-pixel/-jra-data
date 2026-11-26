@@ -33,7 +33,10 @@ def load_nk_races(root=NK_DIR):
         with f.open(encoding="utf-8") as fh:
             for line in fh:
                 if line.strip():
-                    r = json.loads(line)
+                    try:
+                        r = json.loads(line)
+                    except json.JSONDecodeError:   # 書き込み中の最後の行など
+                        continue
                     out[r["race_id"]] = r
     # 旧形式（1ファイル）は年ごとに書き直す
     if legacy.exists():
@@ -59,7 +62,7 @@ def fetch_race(fetcher, cache, race_id, root=NK_DIR):
     horses, pays = parse_race_page(b)
     if not horses:
         return None
-    keep = ("単勝", "複勝", "ワイド", "馬連", "三連複")
+    keep = ("単勝", "複勝", "枠連", "ワイド", "馬連", "馬単", "三連複", "三連単")
     r = {"race_id": race_id, "horses": horses, "pays": {k: v for k, v in pays.items() if k in keep}}
     if any(h["place"] for h in horses):     # 結果が出ているものだけ保存
         Path(root).mkdir(parents=True, exist_ok=True)
@@ -128,6 +131,29 @@ def run(since="20230101", until="99999999", controls=2, max_requests=3000, inter
     f.close()
     log("完了：%d レース / 血統 %d 頭 / リクエスト %d" % (n_races, n_ped, fetcher.n))
     return n_races, n_ped
+
+
+def payouts_all(since="20250101", until="99999999", max_requests=6000, interval=1.1, log=print):
+    """期間内の全平地レースの払戻（全券種）を集める（券種の比較を、偏りの無いレースの集合で行うため）"""
+    races, _ = load_results()
+    r = races[(races["surf"] != "障") & (races["ymd"] >= since) & (races["ymd"] <= until)]
+    r = r.sort_values(["ymd", "jo", "rno"], ascending=False)
+    cache = load_nk_races()
+    fetcher = Fetcher(interval=interval)
+    todo = [netkeiba_race_id(x.ymd, x.jo, x.kai, x.nichi, x.rno) for x in r.itertuples()]
+    todo = [rid for rid in todo if rid not in cache]
+    log("全レースの払戻：対象 %d レース（未取得 %d）" % (len(r), len(todo)))
+    got = 0
+    t0 = time.time()
+    for rid in todo:
+        if fetcher.n >= max_requests:
+            break
+        if fetch_race(fetcher, cache, rid):
+            got += 1
+        if got and got % 200 == 0:
+            log("  %d レース / %.0f 秒" % (got, time.time() - t0))
+    log("完了：新たに %d レース" % got)
+    return got
 
 
 def fetch_peds_for(horse_ids, max_requests=2000, interval=1.1, log=print):

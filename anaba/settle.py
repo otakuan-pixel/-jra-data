@@ -73,7 +73,7 @@ def write_md(led):
          "| 区分 | 選び方 | 頭数 | 3着内 | 3着内率 | 複勝回収率 | 単勝回収率 |", "|---|---|--:|--:|--:|--:|--:|"]
     for tier in TIERS:
         c = led[led["tier"] == tier]
-        groups = [("印%s（%s向き）" % (mk, bet), c[c["mark"] == mk]) for mk, _, _, bet in MARK_RULES[tier]]
+        groups = [("印%s（%s・%s）" % (mk, bet, "買い候補" if buy else "参考"), c[c["mark"] == mk]) for mk, _, _, bet, buy in MARK_RULES[tier]]
         groups.append(("全部（比較用）", c))
         for name, d in groups:
             s = _sum(d)
