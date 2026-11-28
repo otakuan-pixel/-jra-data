@@ -1,6 +1,7 @@
 """python -m anaba <コマンド>
 
-  live      発走30分前レポート（Actions から10分おき。--race 05_11 で指定レースを今すぐ）
+  loop      常駐：1分ごとに発走30分前のレースを判定（Actions で朝に1回起動して夕方まで）
+  live      発走30分前レポートを1回だけ（--race 05_11 で指定レースを今すぐ）
   prefetch  その日の出走馬の5代血統を先に取っておく
   replay    過去のレースで再現（その日より前のデータだけで学習し直す）
   train     学習一式（複勝払戻モデル・条件表・検証・本番モデル）
@@ -24,6 +25,10 @@ def main(argv=None):
     b.add_argument("--lo", type=int, default=25)
     b.add_argument("--hi", type=int, default=35)
     b.add_argument("--no-notify", action="store_true")
+    b = sub.add_parser("loop", help="常駐：1分ごとに発走30分前のレースを判定（Actions で朝に1回起動）")
+    b.add_argument("--date")
+    b.add_argument("--until", default="17:10")
+    b.add_argument("--max-minutes", type=int, default=345)
     b = sub.add_parser("prefetch")
     b.add_argument("--date")
     b.add_argument("--max", type=int, default=800)
@@ -52,6 +57,9 @@ def main(argv=None):
     if a.cmd == "live":
         from .runner import run_live
         run_live(a.date, lo=a.lo, hi=a.hi, only=a.race, notify=not a.no_notify)
+    elif a.cmd == "loop":
+        from .runner import run_loop
+        run_loop(a.date, until=a.until, max_minutes=a.max_minutes)
     elif a.cmd == "prefetch":
         from .live import Http, now_jst
         from .runner import _load_state, _save_state, ensure_day
