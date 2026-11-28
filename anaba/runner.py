@@ -94,7 +94,19 @@ def ensure_day(http, ymd, st, log=print, prefetch_peds=True, max_ped=600):
     return st
 
 
-def run_live(ymd=None, lo=25, hi=35, only=None, notify=True, prefetch=False, log=print):
+_MEMO = {}
+
+
+def _loaded():
+    """成績データ・モデル・馬の索引は、常駐ループの中では1回だけ読む"""
+    if "hist" not in _MEMO:
+        _, _MEMO["hist"] = load_results(JRA2_REPO)
+        _MEMO["bundle"] = Bundle.load()
+        _MEMO["horses"] = H.load()
+    return _MEMO["hist"], _MEMO["bundle"], _MEMO["horses"]
+
+
+def run_live(ymd=None, lo=25, hi=35, only=None, notify=True, prefetch=False, snapshot=True, log=print):
     from .notify import send
     now = now_jst()
     ymd = ymd or now.strftime("%Y%m%d")
@@ -120,14 +132,12 @@ def run_live(ymd=None, lo=25, hi=35, only=None, notify=True, prefetch=False, log
         # 予定どおりなら 25〜35分前（10分おきの実行で1回は入る）。Actions の遅れで過ぎても、発走3分前までは出す
         if lo <= mins <= hi or (3 <= mins < lo):
             targets.append(key)
-    if not only:
+    if snapshot and not only:
         snapshot_odds(http, ymd, st, now, log=log)
     if not targets:
         log("報告するレースはありません（%s）" % now.strftime("%H:%M"))
         return []
-    _, hist = load_results(JRA2_REPO)
-    bundle = Bundle.load()
-    horses = H.load()
+    hist, bundle, horses = _loaded()
     cards, runs_list, meta = [], [], {}
     for key in sorted(targets):
         r = st["races"][key]
@@ -182,6 +192,65 @@ def run_live(ymd=None, lo=25, hi=35, only=None, notify=True, prefetch=False, log
     _save_state(ymd, st)
     _update_index(ymd, st)
     return out
+
+
+def git_sync(msg, log=print):
+    """レポートをコミットして push（GitHub Actions の中だけ）。常駐ループで報告のたびに呼ぶ"""
+    import subprocess
+    if not os.environ.get("GITHUB_ACTIONS"):
+        return False
+    run = lambda *a: subprocess.run(list(a), capture_output=True, text=True)
+    run("git", "add", "reports", "data/pedigree", "data/horses.csv")
+    if run("git", "diff", "--cached", "--quiet").returncode == 0:
+        return False
+    run("git", "commit", "-q", "-m", msg)
+    for _ in range(3):
+        if run("git", "pull", "--rebase", "-q").returncode == 0 and run("git", "push", "-q").returncode == 0:
+            return True
+    log("push に失敗しました（次の回で再試行）")
+    return False
+
+
+def run_loop(ymd=None, until="17:10", max_minutes=345, interval=60, lo=28, hi=32, snap_every=600, log=print):
+    """常駐ループ：1分ごとに発走30分前（28〜32分前）のレースを判定し、報告したらすぐコミット・通知する。
+    GitHub の定時起動は数時間遅れることがあるので、朝に1回起動すればその日の残りを取りこぼさないようにする。
+    終わる条件：その日の残りのレースがすべて報告済み／until を過ぎた／max_minutes を超えた"""
+    import time as _t
+    t0 = _t.time()
+    now = now_jst()
+    ymd = ymd or now.strftime("%Y%m%d")
+    h, m = until.split(":")
+    end = now.replace(hour=int(h), minute=int(m), second=0, microsecond=0)
+    last_snap = 0.0
+    log("常駐開始：%s（%s まで、最長 %d 分）" % (ymd, until, max_minutes))
+    while True:
+        now = now_jst()
+        snap = _t.time() - last_snap >= snap_every
+        try:
+            out = run_live(ymd, lo=lo, hi=hi, snapshot=snap, log=log)
+        except Exception as e:      # 1回の失敗でループ全体を止めない
+            import traceback
+            log("エラー（続行）：%r\n%s" % (e, traceback.format_exc()[-800:]))
+            out = []
+        if snap:
+            last_snap = _t.time()
+        if out or snap:
+            git_sync("大穴レポート %s" % now.strftime("%Y-%m-%dT%H:%M"), log=log)
+        st = _load_state(ymd)
+        races = st.get("races") or {}
+        if not races:
+            log("開催なし → 終了")
+            break
+        left = [k for k, r in races.items() if r.get("surf") != "障" and not r.get("reported")
+                and post_datetime(ymd, r.get("post")) and post_datetime(ymd, r["post"]) > now_jst()]
+        if not left:
+            log("全レース報告済み → 終了")
+            break
+        if now_jst() >= end or (_t.time() - t0) / 60 >= max_minutes:
+            log("時間切れ → 終了（残り %d レースは次の起動で）" % len(left))
+            break
+        _t.sleep(max(5, interval - (_t.time() - now.timestamp())))
+    git_sync("大穴レポート %s" % now_jst().strftime("%Y-%m-%dT%H:%M"), log=log)
 
 
 def replay(ymd, race_key, log=print):
