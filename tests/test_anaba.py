@@ -180,3 +180,12 @@ def test_mark_rules():
     assert mark_of({**base, "odds": 60.0, "pop": 12, "ev_place": 1.05}) == ("△", "複勝")
     assert mark_of({**base, "odds": 60.0, "pop": 12, "ev_win": 3.0}) == ("", "")      # 大穴の単勝期待値では印を付けない
     assert is_buy("★") and not is_buy("△") and not is_buy("")
+
+
+def test_should_notify():
+    from anaba.runner import should_notify
+    star, ref, blood = {"mark": "★"}, {"mark": "△"}, {"mark": ""}
+    assert should_notify([star, blood], "buy") and not should_notify([ref, blood], "buy")
+    assert not should_notify([], "buy")
+    assert should_notify([ref], "marked") and not should_notify([], "marked")
+    assert should_notify([], "all")

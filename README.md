@@ -12,7 +12,7 @@ JRA平地の **中穴・大穴で3着内に来る馬** を、発走30分前の�
 - 発走30分前に、中穴・大穴の各馬について「推定3着内率（モデル）」と「オッズから見た3着内率（市場）」を比べ、複勝・単勝の期待値を出す
 - 過去に好走した条件（競馬場・コース・距離帯・馬場・回り・人気薄での激走歴）と臨戦過程（間隔・叩き何戦目・距離変更・乗り替わり・ブリンカーなど）を馬ごとに列挙し、**その条件がすでに人気に織り込まれているか** を添える
 - netkeiba の5代血統表からクロスを計算し、**奇跡の血量（3×4／4×3 ＝ 18.75%）** を判定する
-- レポートは `reports/<日付>/` に保存し、GitHub の Issue にコメントで通知する（任意で Discord / Slack）
+- レポートは全レース `reports/<日付>/` に保存し、★（買い候補）のあるレースだけ GitHub の Issue にコメントで通知する（任意で Discord / Slack）
 - 毎週、答え合わせ（`reports/ledger.md`）・再学習・血統の検証を自動で回す
 
 データは [otakuan-pixel/jra2](https://github.com/otakuan-pixel/jra2) の成績データ（2021年〜・全10場・約27万頭）を使う。
@@ -154,7 +154,7 @@ JRA平地の **中穴・大穴で3着内に来る馬** を、発走30分前の�
 1. Settings → Actions → General → Workflow permissions を **Read and write** にする（レポートのコミットと Issue 作成のため）
 2. 通知：GitHub アプリでこのリポジトリを Watch（Issues）にしておくとスマホに届く
 3. 任意：Discord / Slack に送るなら Settings → Secrets → Actions に `ANABA_WEBHOOK_URL` を登録
-4. 任意：印の無いレースも通知するなら Settings → Variables に `ANABA_NOTIFY` = `all`
+4. 通知は **★（買い候補）があるレースだけ**（全レースのレポートは `reports/<日付>/` に残る）。変えるなら Settings → Secrets and variables → Actions → Variables に `ANABA_NOTIFY` を作る：`marked`＝△・血を含む印があれば通知、`all`＝全レース
 5. 手動実行：Actions → 「大穴レポート（発走30分前）」→ Run workflow（`race` に `05_11` などを入れると今すぐ）
 
 ## コマンド（手元で動かす場合）
