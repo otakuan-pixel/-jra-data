@@ -27,7 +27,7 @@ def github_issue_comment(ymd, body, log=print):
                 num = it["number"]
     if num is None:
         r = _gh("issue", "create", "--title", title, "--body",
-                "発走30分前の大穴分析をレースごとにコメントします。\n\n※期待値は推定です。的中や利益を保証するものではありません。")
+                "発走30分前に★（買い候補）が出たレースをコメントします。全レースのレポートは reports/ にあります。\n\n※期待値は推定です。的中や利益を保証するものではありません。")
         if r.returncode != 0:
             log("Issue作成に失敗：" + r.stderr.strip()[:200])
             return False

@@ -97,6 +97,18 @@ def ensure_day(http, ymd, st, log=print, prefetch_peds=True, max_ped=600):
 _MEMO = {}
 
 
+def should_notify(picks, mode=None):
+    """通知するか。ANABA_NOTIFY：buy（既定）＝★買い候補があるレースだけ／marked＝△・血を含む印があれば／all＝全レース
+    （レポート自体は、どの設定でも全レース reports/ に残る）"""
+    from .report import is_buy
+    mode = (mode or os.environ.get("ANABA_NOTIFY") or "buy").strip()
+    if mode == "all":
+        return True
+    if mode == "marked":
+        return bool(picks)
+    return any(is_buy(x["mark"]) for x in picks)
+
+
 def _loaded():
     """成績データ・モデル・馬の索引は、常駐ループの中では1回だけ読む"""
     if "hist" not in _MEMO:
@@ -185,7 +197,7 @@ def run_live(ymd=None, lo=25, hi=35, only=None, notify=True, prefetch=False, sna
         write_picks(day_dir(ymd) / "picks.csv", d, card, now_jst().isoformat(timespec="minutes"))
         st["races"][key]["reported"] = now_jst().isoformat(timespec="minutes")
         st["races"][key]["marks"] = " ".join("%s%d" % (x["mark"] or "血", x["num"]) for x in picks)
-        if notify and (picks or os.environ.get("ANABA_NOTIFY", "marked") == "all"):
+        if notify and should_notify(picks):
             send(ymd, md, log=log)
         out.append((key, md))
         log("報告：%s %s" % (key, st["races"][key]["marks"] or "（印なし）"))

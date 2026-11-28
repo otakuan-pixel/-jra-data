@@ -34,7 +34,7 @@ jobs:
       JRA2_REPO: ${{ github.workspace }}/jra2
       GH_TOKEN: ${{ github.token }}
       ANABA_WEBHOOK_URL: ${{ secrets.ANABA_WEBHOOK_URL }}
-      ANABA_NOTIFY: ${{ vars.ANABA_NOTIFY || 'marked' }}
+      ANABA_NOTIFY: ${{ vars.ANABA_NOTIFY || 'buy' }}
     steps:
       - uses: actions/checkout@v4
 
